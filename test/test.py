@@ -26,7 +26,7 @@ async def test_project_gatelevel(dut):
 
     # Initial input values
     s.i.ui_in = "[false, false, false, false,  false, false, false, false]"
-    # Enabble needs to be set for simulation to not be all X
+    # Enable needs to be set for simulation to not be all X
     s.i.ena = True
 
     # Reset. For a few cycles to let the synchronizers settle
