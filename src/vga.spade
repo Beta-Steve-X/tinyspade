@@ -1,0 +1,52 @@
+
+// Translated to Spade from VGA Playground's default hsync_generator
+
+/*
+Video sync generator, used to drive a VGA monitor.
+Timing from: https://en.wikipedia.org/wiki/Video_Graphics_Array
+To use:
+- Wire the hsync and vsync signals to top level outputs
+- Add a 3-bit (or more) "rgb" output to the top level
+*/
+
+pub entity hvsync_gen<
+        #uint H_DISPLAY = 640,
+        #uint H_BACK = 48,
+        #uint H_FRONT = 16,
+        #uint H_SYNC = 96,
+        #uint V_DISPLAY = 480,
+        #uint V_TOP = 33,
+        #uint V_BOTTOM = 10,
+        #uint V_SYNC = 2,
+    >(clk: clock, rst: bool) -> (
+        /*vsync:*/ bool,
+        /*hsync:*/ bool,
+        /*display_on:*/ bool,
+        /*hpos:*/ uint<10>,
+        /*vpos:*/ uint<10>
+    ) {
+    let HD: uint<10> = H_DISPLAY;
+    let HB: uint<10> = H_BACK;
+    let HF: uint<10> = H_FRONT;
+    let HS: uint<10> = H_SYNC;
+    let VD: uint<10> = V_DISPLAY;
+    let VT: uint<10> = V_TOP;
+    let VB: uint<10> = V_BOTTOM;
+    let VS: uint<10> = V_SYNC;
+    let H_SYNC_START = HD +. HF;
+    let H_SYNC_END   = HD +. HF +. HS -. 1;
+    let H_MAX        = HD +. HB +. HF +. HS -. 1;
+    let V_SYNC_START = VD +. VB;
+    let V_SYNC_END   = VD +. VB +. VS -. 1;
+    let V_MAX        = VD +. VT +. VB +. VS -. 1;
+    
+    reg(clk) hpos: uint<10> reset(rst: 0) = if(hpos == H_MAX) {0} else {hpos +. 1};
+    let hsync: bool = !(hpos>=H_SYNC_START && hpos<=H_SYNC_END);
+
+    reg(clk) vpos: uint<10> reset(rst: 0) = if(hpos == H_MAX) {if(vpos == V_MAX) {0} else {vpos +. 1}} else {vpos};
+    let vsync: bool = !(vpos>=V_SYNC_START && vpos<=V_SYNC_END);
+
+    let display_on: bool = (hpos<H_DISPLAY) && (vpos<V_DISPLAY);
+
+    (vsync, hsync, display_on, hpos, vpos)
+}

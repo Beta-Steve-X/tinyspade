@@ -1,5 +1,6 @@
 .DS_Store
 .idea
+.surfer
 *.vcd
 *.fst
 *.fst.hier
@@ -14,3 +15,4 @@ test/gate_level_netlist.v
 build
 tt*
 src/project.sv
+src/*.0

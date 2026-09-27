@@ -1,4 +1,7 @@
 {
   "verilog.linting.linter": "verilator",
-  "verilog.formatting.verilogHDL.formatter": "verible-verilog-format"
+  "verilog.formatting.verilogHDL.formatter": "verible-verilog-format",
+  "python.analysis.extraPaths": [
+    "./build/oss-cad-suite/lib/python3.11/site-packages"
+  ]
 }
