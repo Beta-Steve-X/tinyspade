@@ -16,3 +16,4 @@ build
 tt*
 src/project.sv
 src/*.0
+pysrc/

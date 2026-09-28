@@ -17,7 +17,7 @@ pub entity hvsync_gen<
         #uint V_DISPLAY = 480,
         #uint V_TOP = 33,
         #uint V_BOTTOM = 10,
-        #uint V_SYNC = 2,
+        #uint V_SYNC = 2
     >(clk: clock, rst: bool) -> (
         /*vsync:*/ bool,
         /*hsync:*/ bool,

@@ -9,34 +9,83 @@ mod vga;
 entity design(clk: clock, rst: bool, ui_in: [bool; 8]) -> uint<8> {
     let (vsync, hsync, display_on, hpos, vpos) = inst vga::hvsync_gen(clk, rst);
 
-    reg(clk) counter: uint<10> reset(rst: 0) = counter +. 1;
+    decl posx;
+    reg(unsafe{vsync.as_clock()}) velx: bool reset(rst: true) = match posx {590 => false, 50 => true, _ => velx};
+    reg(unsafe{vsync.as_clock()}) posx: uint<10> reset(rst: 320) = if(velx) {posx +. 1} else {posx -. 1};
+    decl posy;
+    reg(unsafe{vsync.as_clock()}) vely: bool reset(rst: true) = match posy {430 => false, 50 => true, _ => vely};
+    reg(unsafe{vsync.as_clock()}) posy: uint<10> reset(rst: 240) = if(vely) {posy +. 1} else {posy -. 1};
     
-    let moving_x: uint<10> = hpos +. counter;
+    // let moving_x: uint<10> = hpos +. counter;
 
-    let inside: bool = logo(hpos, vpos, 320, 240);
+    let inside: bool = logo(hpos, vpos, posx, posy);
+    // let inside: bool = len::<11>((hpos.to_int() - 320).abs().to_int().trunc(), (vpos.to_int() -. 240).abs().to_int().trunc()) <= 395;
+    // let inside1: bool = len((hpos.to_int() - 320).abs().to_int().trunc(), vpos.to_int() -. 240) <= 300;
+    // let inside2: bool = len((hpos.to_int() - 320).abs().to_int().trunc(), vpos.to_int() -. 240) <= 200;
+    let inside1 = inside;
+    let inside2 = inside;
 
     let R: [bool; 2] = if(display_on) {[inside, inside]} else {[false; 2]};
-    let G: [bool; 2] = if(display_on) {[inside, inside]} else {[false; 2]};
-    let B: [bool; 2] = if(display_on) {[inside, inside]} else {[false; 2]};
+    let G: [bool; 2] = if(display_on) {[inside1, inside1]} else {[false; 2]};
+    let B: [bool; 2] = if(display_on) {[inside2, inside2]} else {[false; 2]};
 
     // TinyVGA PMOD
     [hsync, B[0], G[0], R[0], vsync, B[1], G[1], R[1]].reversed().to_uint()
-    // [hsync, false, false, false, vsync, false, vpos > 240 && display_on, hpos > 320 && display_on].reversed().to_uint()
+}
+
+fn clogo(x: uint<10>, y: uint<10>, lx: uint<10>, ly: uint<10>) -> bool {
+    let dx: int<11> = (x.to_int() -. lx.to_int()).abs().to_int().trunc(); // Distance x <-> lx
+    let dy: int<11> = y.to_int() -. ly.to_int(); // Signed distance y <-> ly
+
+    let mid: bool = len((dx +. 152).abs().to_int().trunc(), dy) <= 82;
+
+    let med: bool = (len((dx -. 56).abs().to_int().trunc(), dy) <= 71) && (len((dx -. 94).abs().to_int().trunc(), dy) > 116);
+
+    let out: bool = (len((dx -. 54).abs().to_int().trunc(), dy) <= 28) && (len((dx -. 62).abs().to_int().trunc(), dy) > 39);
+
+    mid || med || out
 }
 
 fn logo(x: uint<10>, y: uint<10>, lx: uint<10>, ly: uint<10>) -> bool {
-    let dx: uint<10> = (x.to_int() - lx.to_int()).abs().trunc(); // Distance x <-> lx
-    let x2: uint<20> = dx*dx;
-    let dy: uint<10> = (y.to_int() - ly.to_int()).abs().trunc(); // Distance y <-> ly
-    let y2: uint<20> = dy*dy;
+    let dx = (x.to_int() - lx.to_int()).abs();
+    let dy = (y.to_int() - ly.to_int()).abs();
+    dx <= 45 && dy < 50 && ologo(trunc(dx), trunc(dy))
+}
 
-    let mid: bool = (x2 +. 152u10*152u10 +. 2u2*152u8*dx) +. y2 <= 25680;
-
-    let med: bool = ((x2 +. 56u10*56u10 -. 2u2*56u8*dx) +. y2 <= 1920) && ((x2 +. 94u10*94u10 -. 2u2*94u8*dx) +. y2 > 5060);
-
-    let out: bool = ((x2 +. 45u10*45u10 -. 2u2*45u8*dx) +. y2 <= 289) && ((x2 +. 62u10*62u10 -. 2u2*62u8*dx) +. y2 > 582);
+fn ologo(x: uint<6>, y: uint<6>) -> bool {
+    // let mid: bool = 6u3 * x + zext(y) < 50;
+    let mid: bool = (50u6 * x).max(8u6 * y) + ((50u6 * x).min(8u6 * y) >> 1) < 400;
+    // let med: bool = (x - (y >> 2) -. 18u7) * 14u4 + y * 2 < 76;
+    let med: bool = zext(y) <= 3u3 * x - 37 && zext(y) <= x + 4 && (zext(y) >= 6u3 * x - 137 || zext(y) >= 2u3 * x - 29 || (x <= 23 && x > 13));
+    // let out: bool = (x - (y >> 1) -. 33u7) * 14u4 + y * 4 < 70;
+    let out: bool = zext(y) <= 2u2 * x - 58 && zext(y) <= x / 2 - 4 && (zext(y) > 3u2 * x - 113 || (x > 30 && x <= 38));
 
     mid || med || out
+}
+
+// Compute |(x,y)| using CORDIC
+fn len<#uint N, #uint PREC = 1, #uint EXT = 2>(x: int<N>, y: int<N>) -> uint<10> {
+    let x: int<{N+PREC+EXT}> = sext(x) << PREC;
+    let y: int<{N+PREC+EXT}> = sext(y) << PREC;
+
+    let (x, y) = cordic::<0, _>(x, y);
+    let (x, y) = cordic::<1, _>(x, y);
+    let (x, y) = cordic::<2, _>(x, y);
+    // let (x, y) = cordic::<3, _>(x, y);
+    // let (x, y) = cordic::<4, _>(x, y);
+    // let (x, y) = cordic(x, y, 5);
+    // let (x, y) = cordic(x, y, 6);
+    // let (x, y) = cordic(x, y, 7);
+
+    trunc((x >> PREC).abs())
+}
+
+fn cordic<#uint i, #uint N>(x: int<N>, y: int<N>) -> (int<N>, int<N>) {
+    if(y > 0) {
+        (x +. (y >>> i), -(x >>> i) +. y)
+    } else {
+        (x -. (y >>> i), (x >>> i) +. y)
+    }
 }
 
 /// This is the top module (main function) of TinyTapeout, before submission,
