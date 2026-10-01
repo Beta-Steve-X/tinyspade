@@ -6,24 +6,60 @@ mod vga;
 //     if(/*_0 && _1 && */_5 && _6) {/*trunc(_3) ^ */trunc(_9)} else {trunc(_8/* + _4*/)}
 // }
 
+// entity design(clk: clock, rst: bool, ui_in: [bool; 8]) -> uint<8> {
+//     let (vsync, hsync, display_on, hpos, vpos) = inst vga::hvsync_gen(clk, rst);
+
+//     decl posx;
+//     reg(unsafe{vsync.as_clock()}) velx: bool reset(rst: true) = match posx {590 => false, 50 => true, _ => velx};
+//     reg(unsafe{vsync.as_clock()}) posx: uint<10> reset(rst: 320) = if(velx) {posx +. 1} else {posx -. 1};
+//     decl posy;
+//     reg(unsafe{vsync.as_clock()}) vely: bool reset(rst: true) = match posy {430 => false, 50 => true, _ => vely};
+//     reg(unsafe{vsync.as_clock()}) posy: uint<10> reset(rst: 240) = if(vely) {posy +. 1} else {posy -. 1};
+    
+//     // let moving_x: uint<10> = hpos +. counter;
+
+//     reg(clk) d2ctr: uint<4> reset(!hsync: 11) = if(d2ctr == 0) {0} else {d2ctr -. 1};
+//     reg(unsafe{(d2ctr == 0).as_clock()}) dy2: uint<20> = inst seqsqr(clk, !hsync, (vpos.to_int() - posy.to_int() + 1).abs().trunc()); // Distance y <-> ly squared
+
+//     // reg(clk) dx200: uint<20> = sqr(((-48 - posx.to_int()).abs() + 152).trunc()); // Distance x <-> lx-152 squared
+//     reg(clk) dx200: uint<20> = sqr(trunc((48 + posx.to_int() + 152).abs())); // Distance x <-> lx-152 squared
+//     reg(clk) dx01: int<11> = if(!hsync) {-48 -. posx.to_int() -. 152} else {dx01 +. 1};
+//     reg(clk) dx201: uint<20> reset(!hsync: dx200) = (dx201.to_int() +. 2*dx01 -. 1).abs().trunc();
+//     reg(clk) dx200_: uint<20> = sqr(trunc((48 + posx.to_int() - 152).abs())); // Distance x <-> lx-152 squared
+//     reg(clk) dx01_: int<11> = if(!hsync) {-48 -. posx.to_int() +. 152} else {dx01_ +. 1};
+//     let dx01__ = if(hpos < posx && hsync) {dx01} else {dx01_};
+//     reg(clk) dx201_: uint<20> reset(!hsync: dx200_) = (dx201_.to_int() +. 2*dx01__ -. 1).abs().trunc();
+//     // let inside: bool = clogo(hpos, dy2, posx, sqr(dx01.abs().trunc()));
+//     // let inside: bool = len::<11>((hpos.to_int() - 320).abs().to_int().trunc(), (vpos.to_int() -. 240).abs().to_int().trunc()) <= 395;
+//     // let inside1: bool = len((hpos.to_int() - 320).abs().to_int().trunc(), vpos.to_int() -. 240) <= 300;
+//     // let inside2: bool = len((hpos.to_int() - 320).abs().to_int().trunc(), vpos.to_int() -. 240) <= 200;
+//     reg(unsafe{(d2ctr == 0).as_clock()}) dy2_: uint<20> = sqr((vpos.to_int() - posy.to_int() + 1).abs().trunc()); // Distance y <-> ly squared
+//     let inside1 = clogo(hpos, dy2_, posx, if(hpos < posx) {dx201} else {dx201_});
+//     let inside = inside1;
+//     let inside2 = inside1;
+
+//     let R: [bool; 2] = if(display_on) {[inside, inside]} else {[false; 2]};
+//     let G: [bool; 2] = if(display_on) {[inside1, inside1]} else {[false; 2]};
+//     let B: [bool; 2] = if(display_on) {[inside2, inside2]} else {[false; 2]};
+
+//     // TinyVGA PMOD
+//     [hsync, B[0], G[0], R[0], vsync, B[1], G[1], R[1]].reversed().to_uint()
+// }
+
 entity design(clk: clock, rst: bool, ui_in: [bool; 8]) -> uint<8> {
     let (vsync, hsync, display_on, hpos, vpos) = inst vga::hvsync_gen(clk, rst);
 
-    decl posx;
-    reg(unsafe{vsync.as_clock()}) velx: bool reset(rst: true) = match posx {590 => false, 50 => true, _ => velx};
-    reg(unsafe{vsync.as_clock()}) posx: uint<10> reset(rst: 320) = if(velx) {posx +. 1} else {posx -. 1};
-    decl posy;
-    reg(unsafe{vsync.as_clock()}) vely: bool reset(rst: true) = match posy {430 => false, 50 => true, _ => vely};
-    reg(unsafe{vsync.as_clock()}) posy: uint<10> reset(rst: 240) = if(vely) {posy +. 1} else {posy -. 1};
-    
-    // let moving_x: uint<10> = hpos +. counter;
+    reg(unsafe{(!hsync).as_clock()}) dy2: uint<20> = ((vpos.to_int() - 240) * (vpos.to_int() - 240)).abs().trunc();
+    // reg(clk) dx2: uint<20> = ((hpos.to_int() - (320 + if(hpos > 320) {-152} else {152})) * (hpos.to_int() - (320 + if(hpos > 320) {-152} else {152}))).abs().trunc();
+    // reg(clk) dx2: uint<20> reset(!display_on: (320u9 + 152u9) * (320u9 + 152u9)) = dx2 -. ((if(hpos <= 320) {320u10 +. 152u10} else {320u10 -. 152u10}) * 2u10 -. 2 -. hpos * 2u10);
+    // reg(clk) dx2_2: uint<20> reset(!display_on: (320u9 - 152u9) * (320u9 - 152u9)) = dx2_2 -. ((320u10 -. 152u10) * 2u10 -. 0 -. hpos * 2u10);
+    // reg(clk) dx21: uint<20> reset(!display_on: (320u9 - 56u9) * (320u9 - 56u9)) = dx21 -. ((if(hpos <= 320) {320u10 -. 56u10} else {320u10 +. 56u10}) * 2u10 -. 2 -. hpos * 2u10);
+    // reg(clk) dx22: uint<20> reset(!display_on: (320u9 - 94u9) * (320u9 - 94u9)) = dx22 -. ((if(hpos <= 320) {320u10 -. 94u10} else {320u10 +. 94u10}) * 2u10 -. 2 -. hpos * 2u10);
+    reg(clk) dx31: uint<20> reset(!display_on: (320u9 - 45u9) * (320u9 - 45u9)) = dx31 -. ((if(hpos <= 320) {320u10 -. 45u10} else {320u10 +. 45u10}) * 2u10 -. 2 -. hpos * 2u10);
 
-    let inside: bool = logo(hpos, vpos, posx, posy);
-    // let inside: bool = len::<11>((hpos.to_int() - 320).abs().to_int().trunc(), (vpos.to_int() -. 240).abs().to_int().trunc()) <= 395;
-    // let inside1: bool = len((hpos.to_int() - 320).abs().to_int().trunc(), vpos.to_int() -. 240) <= 300;
-    // let inside2: bool = len((hpos.to_int() - 320).abs().to_int().trunc(), vpos.to_int() -. 240) <= 200;
-    let inside1 = inside;
-    let inside2 = inside;
+    let inside = inst sqrcntr(clk, display_on, hpos, 320, -152) + dy2 < 25680;
+    let inside1 = inst sqrcntr(clk, display_on, hpos, 320, 56) + dy2 < 1920 && !(inst sqrcntr(clk, display_on, hpos, 320, 94) + dy2 < 5060);
+    let inside2 = /*dx31 + dy2 < 289 && */!(inst sqrcntr(clk, display_on, hpos, 320, 62) + dy2 < 582);
 
     let R: [bool; 2] = if(display_on) {[inside, inside]} else {[false; 2]};
     let G: [bool; 2] = if(display_on) {[inside1, inside1]} else {[false; 2]};
@@ -33,15 +69,21 @@ entity design(clk: clock, rst: bool, ui_in: [bool; 8]) -> uint<8> {
     [hsync, B[0], G[0], R[0], vsync, B[1], G[1], R[1]].reversed().to_uint()
 }
 
-fn clogo(x: uint<10>, y: uint<10>, lx: uint<10>, ly: uint<10>) -> bool {
-    let dx: int<11> = (x.to_int() -. lx.to_int()).abs().to_int().trunc(); // Distance x <-> lx
-    let dy: int<11> = y.to_int() -. ly.to_int(); // Signed distance y <-> ly
+entity sqrcntr(clk: clock, display_on: bool, hpos: uint<10>, mirrorx: uint<10>, xoff: int<11>) -> uint<20> {
+    reg(clk) dx: uint<20>
+        reset(!display_on: ((mirrorx.to_int() -. xoff) * (mirrorx.to_int() -. xoff)).abs().trunc())
+        = dx -. ((if(hpos <= mirrorx) {mirrorx.to_int() -. xoff} else {mirrorx.to_int() +. xoff}).abs().trunc() * 2u10 -. 2 -. hpos * 2u10);
+    dx
+}
 
-    let mid: bool = len((dx +. 152).abs().to_int().trunc(), dy) <= 82;
+fn clogo(x: uint<10>, dy2: uint<20>, lx: uint<10>, dx20: uint<20>) -> bool {
+    let dx: int<11> = (x.to_int() -. lx.to_int()).abs().to_int().trunc(); // Signed distance x <-> lx
 
-    let med: bool = (len((dx -. 56).abs().to_int().trunc(), dy) <= 71) && (len((dx -. 94).abs().to_int().trunc(), dy) > 116);
+    let mid: bool = dx20 +. dy2 <= 25680;
 
-    let out: bool = (len((dx -. 54).abs().to_int().trunc(), dy) <= 28) && (len((dx -. 62).abs().to_int().trunc(), dy) > 39);
+    let med: bool = (sqr((dx - 56).abs().trunc()) +. dy2 <= 1920) && (sqr((dx - 94).abs().trunc()) +. dy2 > 5060);
+
+    let out: bool = (sqr((dx - 45).abs().trunc()) +. dy2 <= 289) && (sqr((dx - 62).abs().trunc()) +. dy2 > 582);
 
     mid || med || out
 }
@@ -61,6 +103,22 @@ fn ologo(x: uint<6>, y: uint<6>) -> bool {
     let out: bool = zext(y) <= 2u2 * x - 58 && zext(y) <= x / 2 - 4 && (zext(y) > 3u2 * x - 113 || (x > 30 && x <= 38));
 
     mid || med || out
+}
+
+fn len2(x: uint<10>, y: uint<10>) -> uint<20> {
+    x * x +. y * y
+}
+
+fn sqr(x: uint<10>) -> uint<20> {
+    x * x
+}
+
+entity seqsqr(clk: clock, rst: bool, x: uint<10>) -> uint<20> {
+    // let x = x >> 1;
+    reg(clk) sumctr: uint<4> reset(rst: 9) = if(sumctr == 0) {0} else {sumctr -. 1};
+    let m: uint<11> = x * trunc(x >> zext(sumctr));
+    reg(clk) sum: uint<20> reset(rst: 0) = sum +. zext(m << zext(sumctr));
+    sum
 }
 
 // Compute |(x,y)| using CORDIC
